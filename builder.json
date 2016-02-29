@@ -1,0 +1,28 @@
+{
+  "osx" : {
+    "title": "sealtalk-desktop",
+    "background": "res/Mac_icon.png",
+    "icon": "res/app.icns",
+    "icon-size": 80,
+    "contents": [
+      { "x": 438, "y": 344, "type": "link", "path": "/Applications" },
+      { "x": 192, "y": 344, "type": "file" }
+    ]
+  },
+  "win" : {
+    "title" : "sealtalk-desktop",
+    "version" : "1.0.0.0",
+    "publisher": "RongCloud",
+    "icon" : "res/app.ico",
+    "verbosity": 1
+  },
+  "linux" : {
+    "arch" : 64,
+    "target" : "deb",
+    "version" : "1.0.0.0",
+    "title" : "sealtalk-desktop",
+    "comment" : "This is a comment",
+    "executable" : "myExec",
+    "maintainer": "Dummy Maintainer <dummy@maintainer.org>"
+  }
+}
