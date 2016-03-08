@@ -88,6 +88,7 @@ gulp.task('package', function(done) {
   var ignoreFiles = [
     'build',
     'dist',
+    'dist2',
     'tests'
   ];
 
@@ -115,13 +116,13 @@ gulp.task('package', function(done) {
 
   packager({
     'dir': './',
-    'name': packageJSON.name,
+    'name': packageJSON.productName,
     'platform': platform,
     'asar': true,
     // 'asar-unpack': './node_modules/node-notifier/vendor/**',
     // 'asar-unpack-dir': 'node_modules/node-notifier/vendor/',
     'arch': arch,
-    'version': '0.36.8',
+    'version': '0.36.9',
     'out': './build',
     'icon': iconPath,
     'app-bundle-id': 'SealTalk',   // OS X only
@@ -130,6 +131,7 @@ gulp.task('package', function(done) {
     'helper-bundle-id': 'SealTalk',// OS X only
     'ignore': ignoreRegexp,
     'overwrite': true,
+    // 'sign': '',// OS X only
     // 'all': true,
     'version-string': {
       'CompanyName': 'RongCloud',

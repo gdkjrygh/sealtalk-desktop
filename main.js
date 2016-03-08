@@ -13,21 +13,25 @@ const path = require('path')
 const fs = require('fs')
 const jsonfile = require('jsonfile')
 const i18n = require("i18n")
+const initSize = {width: 1000, height:640}
+// const autoUpdater = require('auto-updater')
+// autoUpdater.quitAndInstall();
 // const notifier = require('node-notifier');
-
-i18n.configure({
-    locales:['en', 'zh-CN'],
-    directory: __dirname + '/locales',
-    defaultLocale: 'zh-CN'
-});
 
 // Platform flag.
 const platform = {
   OSX: process.platform === 'darwin',
   Windows: process.platform === 'win32'
 }
-// Report crashes to our server.
-require('crash-reporter').start()
+
+
+// i18n.configure({
+//     locales:['en', 'zh-CN'],
+//     directory: __dirname + '/locales',
+//     defaultLocale: 'en',
+//     objectNotation: true ,
+//     register: app
+// });
 
 // A global reference of the window object.
 let mainWindow = null
@@ -36,7 +40,16 @@ let forceQuit = false
 let tray = null
 let bounceID = undefined
 let blink = null
+let crashOptions = null
+// let fsDir = null
 // Set AppUserModelId for Windows 10.
+crashOptions = {
+    companyName: 'RongCloud',
+    submitURL: '',
+    autoSubmit: false
+}
+require('crash-reporter').start(crashOptions)
+
 if (platform.Windows) {
   app.setAppUserModelId('im.sealtalk.SealTalk.SealTalk')
 }
@@ -52,13 +65,28 @@ app.on('before-quit', () => {
 
 // Show main window when activate app icon.
 app.on('activate', () => {
-  mainWindow.show()
+  if (mainWindow) {
+     mainWindow.show()
+  }
   // mainWindow.webContents.send('main', 'active')
 })
 
 // Ready to create browser window.
 app.on('ready', () => {
-  // var greeting = i18n.__('Hello')
+  // console.log(app.getPath('userData'), '-----',app.getName())
+  // fsDir = path.join(app.getPath('userData'), 'settings.json')
+  //
+  // fs.copy(path.join(__dirname, 'settings.json'), fsDir, function (err) {
+  //   if (err) return console.error(err)
+  //   console.log("success!")
+  // })
+  // var greeting = i18n.__('menu.about')
+  // console.log('greeting:' + greeting)
+  // app.setLocale('zh-CN')
+  // greeting = i18n.__('menu.about')
+  // console.log('greeting:' + greeting)
+  //
+  // greeting = i18n.__('menu.placeholder.informal', 'Marcus')
   // console.log('greeting:' + greeting)
   // console.log(require('os').release())
   // console.log(require('os').type())
@@ -68,17 +96,17 @@ app.on('ready', () => {
   const screen = electron.screen
   let workAreaSize = screen.getPrimaryDisplay().workAreaSize
   let savedBounds = loadWindowBounds()
-// dialog.showMessageBox({ title: 'title', message: 'message', detail: 'detail', buttons: ["OK", "NO"] }, function (param){
+// dialog.MessageBox({ title: 'title', message: 'message', detail: 'detail', buttons: ["OK", "NO"] }, function (param){
 //      console.log('param:' + param);
 // })
-// dialog.showErrorBox('title', 'content')
+// dialog.ErrorBox('title', 'content')
   // Create the browser window.
   mainWindow = new BrowserWindow(
     {
-      x: savedBounds.x || 0,
-      y: savedBounds.y || 0,
-      width: savedBounds.width || workAreaSize.width,
-      height: savedBounds.height || workAreaSize.height,
+      x: savedBounds.x || (workAreaSize.width - initSize.width)/2,
+      y: savedBounds.y || (workAreaSize.height - initSize.height),
+      width: savedBounds.width || initSize.width,
+      height: savedBounds.height || initSize.height,
       minWidth: 320,
       minHeight: 640,
       titleBarStyle: 'hidden',
@@ -96,7 +124,12 @@ app.on('ready', () => {
   // Load the index.html of the app.
   // mainWindow.loadURL('file://' + path.join(__dirname, 'index.html'))
 
+  //线上环境
   mainWindow.loadURL('http://web.sealtalk.im/')
+
+  //测试环境
+  // mainWindow.loadURL('http://web.hitalk.im/')
+
   // mainWindow.loadURL('http://10.10.131.56:8181/')
 
   // Hide window when the window will be closed otherwise quit app.
@@ -134,14 +167,14 @@ app.on('ready', () => {
 
     number = isNaN(number) ? 0 : number
 
-    if(platform.OSX){
-      iconFile = number ? 'Mac_Remind_icon.png' : 'Mac_icon.png'
-    }
-    else {
-      iconFile = 'Windows_icon.png'
-    }
-
-    tray.setImage(path.join(__dirname, 'res', iconFile))
+    // if(platform.OSX){
+    //   iconFile = number ? 'Mac_Remind_icon.png' : 'Mac_icon.png'
+    // }
+    // else {
+    //   iconFile = 'Windows_icon.png'
+    // }
+    //
+    // tray.setImage(path.join(__dirname, 'res', iconFile))
 
     if (platform.OSX) {
       setBadge(number)
@@ -151,10 +184,22 @@ app.on('ready', () => {
     }
   })
 
-  ipcMain.on('notification-click', () => {
-    mainWindow.show()
+  ipcMain.on('getBounds', (event) => {
+    saveWindowBounds()
+    let bounds = jsonfile.readFileSync(path.join(__dirname, 'settings.json'))
+
+    // let bounds = mainWindow.getBounds()
+    event.sender.send('gotBounds', bounds)
+
   })
 
+  ipcMain.on('notification-click', () => {
+    if (mainWindow) {
+       mainWindow.show()
+    }
+  })
+
+  //该方法暂停用
   ipcMain.on('kicked-off', () => {
       console.log('kicked-off')
       if (platform.OSX){
@@ -174,7 +219,7 @@ app.on('ready', () => {
   ipcMain.on('webQuit', () => {
     if (platform.OSX){
          setBadge(0)
-         tray.setImage(path.join(__dirname, 'res', 'Mac_icon.png'))
+         tray.setImage(path.join(__dirname, 'res', 'Mac_Template.png'))
     } else if (platform.Windows){
          setTray(0)
     }
@@ -183,13 +228,14 @@ app.on('ready', () => {
 
   ipcMain.on('displayBalloon', (event, title, message) => {
     var options = {
-        icon: path.join(__dirname, 'res/Windows_icon.png'),
+        icon: path.join(__dirname, 'res/app.png'),
         title: title,
         content: message
     }
     tray.displayBalloon(options)
 
   })
+
   const webContents = mainWindow.webContents
 
   // Open a browser when click external link.
@@ -224,9 +270,11 @@ app.on('ready', () => {
 
 // Open account settings panel on account settings menu item selected.
 app.on('menu.main.account_settings', () => {
-  mainWindow.show()
-  // mainWindow.webContents.send('main', 'open_account_settings')
-  mainWindow.webContents.send('menu.main.account_settings')
+  if (mainWindow) {
+    mainWindow.show()
+    // mainWindow.webContents.send('main', 'open_account_settings')
+    mainWindow.webContents.send('menu.main.account_settings')
+  }
 
 })
 
@@ -243,8 +291,10 @@ app.on('menu.edit.search', () => {
 
 // Reload page on reload menu item selected.
 app.on('menu.edit.reload', () => {
-  mainWindow.show()
-  mainWindow.webContents.reloadIgnoringCache()
+  if (mainWindow) {
+    mainWindow.show()
+    mainWindow.webContents.reloadIgnoringCache()
+  }
 })
 
 // Open homepage on homeplage menu item selected.
@@ -277,6 +327,7 @@ function setBadge (unreadCount) {
   }
 
   app.dock.setBadge(text)
+  tray.setTitle(text == '' ? ' ' : text)
 }
 
 // Set tray icon on Windows.闪烁
@@ -319,12 +370,14 @@ function initMenu () {
 
 // Initialize tray icon on Windows.
 function initTray () {
-  let iconFile = platform.OSX ? 'Mac_icon.png' : 'Windows_icon.png'
+  let iconFile = platform.OSX ? 'Mac_Template.png' : 'Windows_icon.png'
 
   tray = new Tray(path.join(__dirname, 'res', iconFile))
   tray.setToolTip('SealTalk')
   tray.on('click', () => {
-    mainWindow.show()
+    if (mainWindow) {
+       mainWindow.show()
+    }
   })
 
   if (platform.Windows) {
@@ -332,7 +385,9 @@ function initTray () {
       {
         label: 'Open',
         click () {
-          mainWindow.show()
+          if (mainWindow) {
+            mainWindow.show()
+          }
         }
       }, {
         type: 'separator'
@@ -348,24 +403,48 @@ function initTray () {
   }
 
   if (platform.OSX) {
-
+     tray.setTitle(' ')
+    //  tray.setPressedImage(path.join(__dirname, 'res/Mac_Light_Template.png'))
   }
 }
 
 // Save window bounds info to setting file.
 function saveWindowBounds () {
   let bounds = mainWindow.getBounds()
+  jsonfile.writeFile(path.join(app.getPath('userData'), 'settings.json'), bounds)
 
-  jsonfile.writeFile(path.join(__dirname, 'settings.json'), bounds)
 }
 
 // Load window bounds info from setting file.
 function loadWindowBounds () {
-  let bounds = jsonfile.readFileSync(path.join(__dirname, 'settings.json'))
-
+  let bounds = null
+  let src = path.join(__dirname, 'settings.json')
+  let dest = path.join(app.getPath('userData'), 'settings.json')
+  if(fileExists(dest)){
+    console.log('exist')
+    bounds = jsonfile.readFileSync(dest)
+  }
+  else{
+    console.log('not exist')
+    bounds = {"x": 0, "y": 0, "width": 0, "height": 0}
+    fs.closeSync(fs.openSync(dest, 'w'));
+  }
+  // bounds = jsonfile.readFileSync(dest)
   return bounds
+
 }
 
+function fileExists(filePath)
+{
+    try
+    {
+        return fs.statSync(filePath).isFile();
+    }
+    catch (err)
+    {
+        return false;
+    }
+}
 
 function toggleDevTools () {
   mainWindow.toggleDevTools()
@@ -377,4 +456,13 @@ function searchFriend () {
 function reload () {
   app.emit('menu.edit.reload')
 }
+process.on('uncaughtException', function (error) {
+  dialog.showErrorBox('应用出了点问题，我们会尽快解决', [
+    error.toString(),
+    "\n",
+    "如果影响到您使用请尽快联系我们",
+    "网站: http://www.rongcloud.cn",
+    "邮箱: support@rongcloud.cn"
+  ].join("\n"))
+})
 // TODO: Kicked by other client, alert a notification.

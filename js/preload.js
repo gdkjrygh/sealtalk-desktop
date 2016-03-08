@@ -18,6 +18,7 @@ window.Electron = {
     // var options = {
     //     title: "Basic Notification",
     //     body: "测试lalwindows baloon"
+    //
     // }
     // new Notification(options.title, options)
   },
@@ -30,8 +31,15 @@ window.Electron = {
     if (platform.Windows){
        this.ipcRenderer.send('displayBalloon', title, message)
     }
+  },
+  getBounds: function (title, message){
+    this.ipcRenderer.send('getBounds')
   }
 }
+window.Electron.ipcRenderer.on('gotBounds', (event, bounds) => {
+  console.log('gotBounds', bounds)
+
+})
 
 window.Electron.ipcRenderer.on('menu.edit.search', () => {
   // console.log('menu.edit.search')
@@ -58,7 +66,10 @@ function checkWin7(){
 const NativeNotification = Notification
 
 Notification = function (title, options) {
-  // console.log('new')
+  console.log('new',options)
+  if(platform.OSX){
+    delete options.icon
+  }
   const notification = new NativeNotification(title, options)
   // 消息提示均由app端调用Notification做,这里只处理win7情况(win7不支持Notification)
   notification.addEventListener('click', () => {
@@ -66,11 +77,9 @@ Notification = function (title, options) {
     window.Electron.ipcRenderer.send('notification-click')
   })
   if (platform.Windows){
-    // window.Electron.displayBalloon('SealTalk信息提示','您的账号在其他地方登陆!')
-    //TODO 测试win7代码问题
-    // if(checkWin7()){
-    //   window.Electron.displayBalloon(options.title,options.body)
-    // }
+    if(checkWin7()){
+      window.Electron.displayBalloon(title, options.body)
+    }
   }
   return notification
 }

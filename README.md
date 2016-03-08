@@ -1,6 +1,24 @@
 # sealtalk-desktop
 
-打包:
+## Download Links
+
+We do support Windows 32, Windows 64, Mac OS X,so please go check it :
+
+http://www.rongcloud.cn/downloads
+
+## Supported Languages
+
++ 简体中文
++ ... keep adding :)
+
+## Setup Environment
+
+Because we use npm to maintain our third party libraries, you have to make sure before doing anything, these needed stuffs are all installed already.
+
+- `npm install`
+- `npm start`
+
+- build
 
 OS X
 
@@ -11,7 +29,7 @@ Windows
 gulp build -p win32 or gulp build -p win64
 
 
-生成安装包:
+- pack:
 
 OS X
 
