@@ -1,4 +1,5 @@
 'use strict'
+if (require('electron-squirrel-startup')) return
 
 const electron = require('electron')
 const app = electron.app
@@ -6,49 +7,72 @@ const BrowserWindow = electron.BrowserWindow
 const globalShortcut = electron.globalShortcut
 const ipcMain = electron.ipcMain
 const Menu = electron.Menu
+const MenuItem = electron.MenuItem
 const shell = electron.shell
 const Tray = electron.Tray
 const dialog = electron.dialog
+const clipboard = electron.clipboard
+const nativeImage = electron.nativeImage
 const path = require('path')
 const fs = require('fs')
 const jsonfile = require('jsonfile')
 const i18n = require("i18n")
 const initSize = {width: 1000, height:640}
-// const autoUpdater = require('auto-updater')
-// autoUpdater.quitAndInstall();
-// const notifier = require('node-notifier');
+const json = require('./package.json')
+const Config = require('./conf.js')
 
 // Platform flag.
 const platform = {
   OSX: process.platform === 'darwin',
-  Windows: process.platform === 'win32'
+  Windows: process.platform === 'win32',
+  Linux: process.platform === 'linux'
 }
 
+const UpdateController = !platform.Linux ? require('./auto-updater') : null
+const Utils = require('./utils')
 
-// i18n.configure({
-//     locales:['en', 'zh-CN'],
-//     directory: __dirname + '/locales',
-//     defaultLocale: 'en',
-//     objectNotation: true ,
-//     register: app
-// });
+i18n.configure({
+    locales:['en', 'zh-CN'],
+    directory: __dirname + '/locales',
+    defaultLocale: 'zh-CN',
+    objectNotation: true ,
+    register: app,
+    // syncFiles: true,
+    api: {
+      '__': 't',
+      '__n': 'tn'
+    }
+});
 
 // A global reference of the window object.
 let mainWindow = null
-// Force quit flag.
 let forceQuit = false
 let tray = null
 let bounceID = undefined
 let blink = null
-let crashOptions = null
-// let fsDir = null
-// Set AppUserModelId for Windows 10.
-crashOptions = {
-    companyName: 'RongCloud',
-    submitURL: '',
-    autoSubmit: false
+let updateManager = null
+let isManualClose = false
+let myScreen = null
+
+electron.crashReporter.start({
+  productName: json.productName,
+  companyName: json.author,
+  submitURL: `${Config.REPORT_URL}/post`,
+  autoSubmit: true
+})
+// Only support Windows and OSX
+if ((platform.Windows || platform.OSX) && process.argv.indexOf('--disable-native') === -1) {
+    if (platform.OSX) {
+      myScreen = require('nodobjc')
+      var modulePath = app.getName() == 'Electron' ? './node_modules/screenshot.framework' : app.getAppPath() + '.unpacked/node_modules/screenshot.framework'
+      // modulePath = './node_modules/screenshot.framework'
+      myScreen.import(modulePath);
+    }
+
+    if (platform.Windows) {
+      myScreen = require('screenshot')
+    }
 }
-require('crash-reporter').start(crashOptions)
 
 if (platform.Windows) {
   app.setAppUserModelId('im.sealtalk.SealTalk.SealTalk')
@@ -68,38 +92,15 @@ app.on('activate', () => {
   if (mainWindow) {
      mainWindow.show()
   }
-  // mainWindow.webContents.send('main', 'active')
 })
 
 // Ready to create browser window.
 app.on('ready', () => {
-  // console.log(app.getPath('userData'), '-----',app.getName())
-  // fsDir = path.join(app.getPath('userData'), 'settings.json')
-  //
-  // fs.copy(path.join(__dirname, 'settings.json'), fsDir, function (err) {
-  //   if (err) return console.error(err)
-  //   console.log("success!")
-  // })
-  // var greeting = i18n.__('menu.about')
-  // console.log('greeting:' + greeting)
-  // app.setLocale('zh-CN')
-  // greeting = i18n.__('menu.about')
-  // console.log('greeting:' + greeting)
-  //
-  // greeting = i18n.__('menu.placeholder.informal', 'Marcus')
-  // console.log('greeting:' + greeting)
-  // console.log(require('os').release())
-  // console.log(require('os').type())
-  // console.log(require('os').platform())
 
-  // console.log(require('os').hostname())
   const screen = electron.screen
   let workAreaSize = screen.getPrimaryDisplay().workAreaSize
   let savedBounds = loadWindowBounds()
-// dialog.MessageBox({ title: 'title', message: 'message', detail: 'detail', buttons: ["OK", "NO"] }, function (param){
-//      console.log('param:' + param);
-// })
-// dialog.ErrorBox('title', 'content')
+
   // Create the browser window.
   mainWindow = new BrowserWindow(
     {
@@ -112,7 +113,7 @@ app.on('ready', () => {
       titleBarStyle: 'hidden',
       icon: path.join(__dirname, 'res', 'app.png'),
       title: app.getName(),
-      'web-preferences': {
+      'webPreferences': {
         preload: path.join(__dirname, 'js', 'preload.js'),
         nodeIntegration: false,
         // webSecurity: false,
@@ -120,22 +121,10 @@ app.on('ready', () => {
       }
     })
 
-
-  // Load the index.html of the app.
-  // mainWindow.loadURL('file://' + path.join(__dirname, 'index.html'))
-
-  //线上环境
-  mainWindow.loadURL('http://web.sealtalk.im/')
-
-  //测试环境
-  // mainWindow.loadURL('http://web.hitalk.im/')
-
-  // mainWindow.loadURL('http://10.10.131.56:8181/')
+  mainWindow.loadURL(Config.APP_ONLINE)
 
   // Hide window when the window will be closed otherwise quit app.
   mainWindow.on('close', (event) => {
-    // Keep nomarl action on exiting full screen mode.
-
     if (mainWindow.isFullScreen()) {
       return
     }
@@ -145,15 +134,18 @@ app.on('ready', () => {
       // mainWindow.blurWebView()
       mainWindow.hide()
     }
-    if(blink){
-       clearInterval(blink)
+
+    if (forceQuit) {
+      if(blink){
+         clearInterval(blink)
+      }
+      if(platform.Windows && myScreen){
+        myScreen.exit_shot();
+      }
     }
     // Save window bounds info when closing.
     saveWindowBounds()
   })
-
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
 
   // Dereference the window object when the window is closed.
   mainWindow.on('closed', () => {
@@ -164,17 +156,7 @@ app.on('ready', () => {
   ipcMain.on('unread-message-count-changed', (event, arg) => {
     let number = parseInt(arg, 10)
     let iconFile
-
     number = isNaN(number) ? 0 : number
-
-    // if(platform.OSX){
-    //   iconFile = number ? 'Mac_Remind_icon.png' : 'Mac_icon.png'
-    // }
-    // else {
-    //   iconFile = 'Windows_icon.png'
-    // }
-    //
-    // tray.setImage(path.join(__dirname, 'res', iconFile))
 
     if (platform.OSX) {
       setBadge(number)
@@ -184,13 +166,8 @@ app.on('ready', () => {
     }
   })
 
-  ipcMain.on('getBounds', (event) => {
-    saveWindowBounds()
-    let bounds = jsonfile.readFileSync(path.join(__dirname, 'settings.json'))
-
-    // let bounds = mainWindow.getBounds()
-    event.sender.send('gotBounds', bounds)
-
+  ipcMain.on('logRequest', (event) => {
+    event.sender.send('logOutput', 'msg you need log')
   })
 
   ipcMain.on('notification-click', () => {
@@ -223,22 +200,18 @@ app.on('ready', () => {
     } else if (platform.Windows){
          setTray(0)
     }
+  })
 
+  ipcMain.on('screenShot', () => {
+      takeScreenshot()
   })
 
   ipcMain.on('displayBalloon', (event, title, message) => {
-    var options = {
-        icon: path.join(__dirname, 'res/app.png'),
-        title: title,
-        content: message
-    }
-    tray.displayBalloon(options)
-
+    displayBalloon(title, message)
   })
 
   const webContents = mainWindow.webContents
 
-  // Open a browser when click external link.
   webContents.on('new-window', (event, url) => {
     event.preventDefault()
     shell.openExternal(url)
@@ -253,35 +226,56 @@ app.on('ready', () => {
   webContents.on('dom-ready', () => {
     webContents.insertCSS(fs.readFileSync(path.join(__dirname, 'res', 'browser.css'), 'utf8'))
     webContents.executeJavaScript(fs.readFileSync(path.join(__dirname, 'js', 'postload.js'), 'utf8'))
+
+    if (!UpdateController || updateManager) return
+    updateManager = new UpdateController(app.getVersion())
+
+    // Show dialog to install
+    updateManager.on('update-downloaded', function (releaseInfo) {
+      let ret = dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        buttons: ['取消', '安装并重启'],
+        icon: path.join(__dirname, 'res/app.png'),
+        message: '发现更新：' + releaseInfo.releaseVersion,
+        title: '应用更新',
+        detail: releaseInfo.releaseNotes || ''
+      })
+      if (ret === 1) {
+        // isManualClose = true
+        forceQuit = true
+        updateManager.install()
+      }
+    })
+
+    updateManager.on('state-changed', function (state) {
+      if (platform.Windows) {
+        displayBalloon('自动更新中...', state)
+      }
+   })
+
   })
 
-  // Register global shortcut
-  if (platform.OSX) {
-    globalShortcut.register('CTRL+CMD+SHIFT+I', toggleDevTools)
-  } else {
-    globalShortcut.register('CTRL+ALT+SHIFT+I', toggleDevTools)
-    globalShortcut.register('CTRL+F', searchFriend)
-    globalShortcut.register('CTRL+R', reload)
-  }
-
+  bindGlobalShortcuts()
   initMenu()
   initTray()
+
+  // process.crash()
 })
 
 // Open account settings panel on account settings menu item selected.
 app.on('menu.main.account_settings', () => {
   if (mainWindow) {
     mainWindow.show()
-    // mainWindow.webContents.send('main', 'open_account_settings')
     mainWindow.webContents.send('menu.main.account_settings')
   }
-
 })
 
 // Set language.
-// app.on('menu.view.languages', (lang) => {
-//   mainWindow.loadURL('https://web.hitalk.im/?lang=' + lang)
-// })
+app.on('menu.view.languages', (lang) => {
+  // mainWindow.loadURL('https://web.hitalk.im/?lang=' + lang)
+  i18n.setLocale(lang)
+  initMenu()
+})
 
 // Focus on search input element.
 app.on('menu.edit.search', () => {
@@ -302,12 +296,34 @@ app.on('menu.help.homepage', () => {
   shell.openExternal('http://sealtalk.im')
 })
 
+
+app.on('menu.checkUpdate', function () {
+  if (!updateManager) return
+  if(updateManager.state == "downloading"){
+    Utils.showMessage('info', '正在更新', '正在更新', "当前更新状态: 正在下载中")
+    return
+  }
+  if (updateManager.state !== 'idle' && updateManager.state !== 'no-update-available') return
+  updateManager.check()
+})
+
+app.on('menu.edit.takeScreenshot', function () {
+  takeScreenshot()
+})
+
+app.on('browser-window-blur', () => {
+  globalShortcut.unregisterAll()
+})
+
+app.on('browser-window-focus', () => {
+  bindGlobalShortcuts()
+})
+
 let shouldQuit = app.makeSingleInstance((argv, workingDirectory) => {
   // Someone tried to run a second instance, we should focus our window
   if (mainWindow) {
     mainWindow.show()
   }
-
   return true
 })
 
@@ -327,7 +343,7 @@ function setBadge (unreadCount) {
   }
 
   app.dock.setBadge(text)
-  tray.setTitle(text == '' ? ' ' : text)
+  tray.setTitle(text == '' ? '' : text)
 }
 
 // Set tray icon on Windows.闪烁
@@ -344,11 +360,11 @@ function setTray (unreadCount) {
     }
   }
   else{
-     tray.setImage(path.join(__dirname, 'res', iconFile[1]))
      if(blink){
         clearInterval(blink)
      }
      blink = null
+     tray.setImage(path.join(__dirname, 'res', iconFile[1]))
   }
 }
 
@@ -357,15 +373,14 @@ function initMenu () {
   let menuTemplate
 
   if (platform.OSX) {
-    menuTemplate = require('./js/menu_osx')
+    menuTemplate = require('./js/menu_osx')(i18n.getLocale())
     const menu = Menu.buildFromTemplate(menuTemplate)
+
     Menu.setApplicationMenu(menu)
   }
   else if (platform.Windows) {
     // menuTemplate = require('./js/menu_win')
   }
-
-
 }
 
 // Initialize tray icon on Windows.
@@ -383,28 +398,31 @@ function initTray () {
   if (platform.Windows) {
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Open',
+        label: app.__('winTrayMenus.Open'),
         click () {
           if (mainWindow) {
             mainWindow.show()
           }
         }
       }, {
+        label: app.__('winTrayMenus.CheckUpdate'),
+        click () {
+          app.emit('menu.checkUpdate')
+        }
+      }, {
         type: 'separator'
       }, {
-        label: 'Exit',
+        label: app.__('winTrayMenus.Exit'),
         click () {
           app.quit()
         }
       }
     ])
-
     tray.setContextMenu(contextMenu)
   }
 
   if (platform.OSX) {
-     tray.setTitle(' ')
-    //  tray.setPressedImage(path.join(__dirname, 'res/Mac_Light_Template.png'))
+     tray.setPressedImage(path.join(__dirname, 'res/Mac_TemplateWhite.png'))
   }
 }
 
@@ -412,37 +430,44 @@ function initTray () {
 function saveWindowBounds () {
   let bounds = mainWindow.getBounds()
   jsonfile.writeFile(path.join(app.getPath('userData'), 'settings.json'), bounds)
-
 }
 
-// Load window bounds info from setting file.
+// Load window bounds info from setting file. create an empty file when not exist
 function loadWindowBounds () {
   let bounds = null
   let src = path.join(__dirname, 'settings.json')
   let dest = path.join(app.getPath('userData'), 'settings.json')
-  if(fileExists(dest)){
-    console.log('exist')
-    bounds = jsonfile.readFileSync(dest)
-  }
-  else{
-    console.log('not exist')
-    bounds = {"x": 0, "y": 0, "width": 0, "height": 0}
-    fs.closeSync(fs.openSync(dest, 'w'));
-  }
-  // bounds = jsonfile.readFileSync(dest)
-  return bounds
 
+  try{
+    if(fileExists(dest)){
+      try{
+         bounds = jsonfile.readFileSync(dest)
+      }
+      catch(err){
+        bounds = {"x": 0, "y": 0, "width": 0, "height": 0}
+      }
+    }
+    else{
+      // console.log('not exist')
+      bounds = {"x": 0, "y": 0, "width": 0, "height": 0}
+      fs.closeSync(fs.openSync(dest, 'w'));
+    }
+  }
+  catch (err){
+    Utils.showError(err)
+  }
+  return bounds
 }
 
 function fileExists(filePath)
 {
     try
     {
-        return fs.statSync(filePath).isFile();
+        return fs.statSync(filePath).isFile()
     }
     catch (err)
     {
-        return false;
+        return false
     }
 }
 
@@ -453,16 +478,124 @@ function toggleDevTools () {
 function searchFriend () {
   app.emit('menu.edit.search')
 }
+
 function reload () {
   app.emit('menu.edit.reload')
 }
+
+function displayBalloon(title, msg) {
+  var options = {
+      icon: path.join(__dirname, 'res/app.png'),
+      title: title,
+      content: msg
+  }
+  tray.displayBalloon(options)
+}
+
 process.on('uncaughtException', function (error) {
-  dialog.showErrorBox('应用出了点问题，我们会尽快解决', [
-    error.toString(),
-    "\n",
-    "如果影响到您使用请尽快联系我们",
-    "网站: http://www.rongcloud.cn",
-    "邮箱: support@rongcloud.cn"
-  ].join("\n"))
+  // Utils.handleError(error)
+  Utils.showError(error)
 })
+
+function takeScreenshot() {
+   if (!myScreen) return
+   try {
+  //    myScreen.screenShot(function(self,arg){
+  //      if(!arg) return
+  //      var str = arg.toString();
+  //      str = str.substr(1,str.length-2);
+  //      var reg = /\s/g;
+  //      str = str.replace(reg, "");
+  //      // console.log(str);
+  //      var buff = new Buffer(str, 'hex');
+   //
+  //      clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+  //      if (mainWindow) {
+  //        mainWindow.show()
+  //        mainWindow.webContents.send('screenshot')
+  //      }
+  //    });
+
+      if(platform.OSX){
+          myScreen.screenshot('screenCapture',myScreen(function(self,arg){
+             if(!arg || arg.toString() == '<00>') return
+             var str = arg.toString();
+             str = str.substr(1,str.length-2);
+             var reg = /\s/g;
+             str = str.replace(reg, "");
+             var buff = new Buffer(str, 'hex');
+             // var buff = new Buffer(arg);
+             clipboard.clear();
+             clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+             // var image = nativeImage.createFromPath('/Users/zy/Desktop/cut.png');
+             if (mainWindow) {
+               mainWindow.show()
+               mainWindow.webContents.send('screenshot')
+             }
+
+          },['@',['@','@']]));
+      }
+
+      if(platform.Windows){
+        // myScreen.screencapture((data) => {
+        //    var buff = new Buffer(data);
+        //      clipboard.clear()
+        //      clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+        //      if (mainWindow) {
+        //        mainWindow.show()
+        //        mainWindow.webContents.send('screenshot')
+        //      }
+        //
+        // });
+        var cp = require('child_process')
+    		var n = cp.fork(path.join(__dirname, 'js', 'child.js'))
+
+    		n.on('message', function(data) {
+    			 var buff = new Buffer(data);
+                 // clipboard.clear()
+                 // clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+                 if (mainWindow) {
+                   mainWindow.show()
+                   mainWindow.webContents.send('screenshot')
+                 }
+    		});
+    		n.send('takeScreenshot');
+      }
+
+    // try {
+    //   myScreen(function (err, buff) {
+    //     if (err || !buff) return
+    //     clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+    //     if (mainWindow) {
+    //       mainWindow.show()
+    //       mainWindow.webContents.send('screenshot')
+    //     }
+    //   })
+    // } catch (error) {
+    //   Utils.handleError(error)
+    // }
+
+    //  screenshot(function (err, buff) {
+    //    if (err || !buff) return
+    //    clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+    //    mainWindow.show()
+    //    mainWindow.webContents.send('slave', 'screenshot')
+    //  })
+   } catch (error) {
+     Utils.handleError(error)
+   }
+ }
+
+ function bindGlobalShortcuts(){
+   if (platform.OSX) {
+     globalShortcut.register('CTRL+CMD+SHIFT+I', toggleDevTools)
+     globalShortcut.register('CTRL+CMD+S', takeScreenshot)
+   } else {
+     globalShortcut.register('CTRL+ALT+SHIFT+I', toggleDevTools)
+     globalShortcut.register('CTRL+F', searchFriend)
+     globalShortcut.register('CTRL+R', reload)
+     globalShortcut.register('CTRL+ALT+S', takeScreenshot)
+   }
+ }
+
 // TODO: Kicked by other client, alert a notification.

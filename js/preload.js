@@ -1,13 +1,22 @@
 var ipcRenderer = require('electron').ipcRenderer
+var remote = require('electron').remote
 const path = require('path')
 // Platform flag.
 const platform = {
   OSX: process.platform === 'darwin',
   Windows: process.platform === 'win32'
 }
+var appInfo
+
+try {
+  appInfo = remote.require('./package.json')
+} catch (err) {
+  appInfo = null
+}
 
 window.Electron = {
   ipcRenderer: ipcRenderer,
+  appInfo: appInfo,
   updateBadgeNumber: function (number) {
     // console.log('updateBadgeNumber')
     this.ipcRenderer.send('unread-message-count-changed', number)
@@ -27,17 +36,21 @@ window.Electron = {
     // console.log('webQuit')
     this.ipcRenderer.send('webQuit')
   },
+  screenShot: function () {
+    //修改图标
+    this.ipcRenderer.send('screenShot')
+  },
   displayBalloon: function (title, message){
     if (platform.Windows){
        this.ipcRenderer.send('displayBalloon', title, message)
     }
   },
-  getBounds: function (title, message){
-    this.ipcRenderer.send('getBounds')
+  logRequest: function (){
+    this.ipcRenderer.send('logRequest')
   }
 }
-window.Electron.ipcRenderer.on('gotBounds', (event, bounds) => {
-  console.log('gotBounds', bounds)
+window.Electron.ipcRenderer.on('logOutput', (event, msg) => {
+  console.log('logOutput:', msg)
 
 })
 
@@ -51,7 +64,22 @@ window.Electron.ipcRenderer.on('menu.edit.search', () => {
 
 window.Electron.ipcRenderer.on('menu.main.account_settings', () => {
   // console.log('menu.main.account_settings')
-  _open_account_settings()
+  if (typeof(eval('_open_account_settings')) == "function") {
+    _open_account_settings()
+  }
+  else{
+    console.log('_open_account_settings do not exist');
+  }
+})
+
+window.Electron.ipcRenderer.on('screenshot', () => {
+  if(typeof(upload_base64) == "undefined"){
+    console.log('upload_base64 do not exist');
+    return
+  }
+  if (upload_base64 && typeof(eval(upload_base64)) == "function") {
+    upload_base64()
+  }
 })
 
 /* eslint-disable no-native-reassign, no-undef */
@@ -66,7 +94,6 @@ function checkWin7(){
 const NativeNotification = Notification
 
 Notification = function (title, options) {
-  console.log('new',options)
   if(platform.OSX){
     delete options.icon
   }

@@ -2,7 +2,7 @@
 
 ## Download Links
 
-We do support Windows 32, Windows 64, Mac OS X,so please go check it :
+We do support Windows, Mac OS X,so please go check it :
 
 http://www.rongcloud.cn/downloads
 
@@ -15,26 +15,56 @@ http://www.rongcloud.cn/downloads
 
 Because we use npm to maintain our third party libraries, you have to make sure before doing anything, these needed stuffs are all installed already.
 
-- `npm install`
-- `npm start`
+```
+  npm install
+  npm start
+```
+- 特别说明
+  electron-prebuilt 1.0.0 以上的版本需要修改 electron-squirrel-startup 模块中 index.js 文件,需要将
 
-- build
+  ```
+  var app = require('app');
+  ```
+  改为
 
-OS X
+  ```
+  var app = require('electron').app;
+  ```
 
-gulp build -p mac
+- 打包
 
-Windows
+    OS X
 
-gulp build -p win32 or gulp build -p win64
+    ```
+    gulp build -p mac
+    ```
+    Windows
 
+    ```
+    gulp build -p win32 or gulp build -p win64
+    ```
 
-- pack:
+- 制作安装包:
 
-OS X
+    OS X
 
-npm run build:osx
+    ```
+    npm run installer:mac
+    ```
+    Windows
 
-Windows
+    ```
+    npm run installer:win
+    ```
+- 发布(打包+签名+压缩+安装包):
 
-npm run build:win32 or npm run build:win64
+    OS X
+
+    ```
+    npm run release:mac
+    ```
+    Windows
+
+    ```
+    npm run release:win
+    ```

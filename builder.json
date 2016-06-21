@@ -1,9 +1,10 @@
 {
   "osx" : {
-    "title": "SealTalk_by_RongCloud_1.0.1",
+    "title": "SealTalk",
     "background": "res/bg.png",
     "icon": "res/app.icns",
     "icon-size": 80,
+    "title": "SealTalk_by_RongCloud_1_0_2",
     "contents": [
       { "x": 438, "y": 160, "type": "link", "path": "/Applications" },
       { "x": 192, "y": 160, "type": "file" }
@@ -11,7 +12,7 @@
   },
   "win" : {
     "title" : "SealTalk",
-    "version" : "1.0.0.0",
+    "version" : "1.0.1",
     "publisher": "RongCloud",
     "icon" : "res/app.ico",
     "verbosity": 1
@@ -19,7 +20,7 @@
   "linux" : {
     "arch" : 64,
     "target" : "deb",
-    "version" : "1.0.0.0",
+    "version" : "1.0.1",
     "title" : "SealTalk",
     "comment" : "This is a comment",
     "executable" : "myExec",

@@ -1,7 +1,6 @@
 'use strict';
 
 var gulp = require('gulp');
-var myApp = require('electron-connect').server.create({useGlobalElectron: true, port: 30081});
 var sequence = require('gulp-sequence');
 var clean = require('gulp-clean');
 var fs = require('fs-extra');
@@ -16,37 +15,19 @@ var argv = require('yargs')
 var path = require('path');
 var packager = require('electron-packager');
 var builder = require('electron-builder');
+var electronInstaller = require('electron-winstaller');
 
 var packageJSON = require('./package.json');
 var CURRENT_ENVIRONMENT = 'development';
 var finalAppPaths = [];
+const zip = require('gulp-zip');
 
-gulp.task('serve', function () {
-  // Start browser process
-  myApp.start();
-  //
-  // // Restart browser process
-  // gulp.watch('app.js', electron.restart);
-  //
-  // // Reload renderer process
-  // gulp.watch(['index.js', 'index.html'], electron.reload);
-});
 
-gulp.task('reload:browser', function () {
-  // Restart main process
-  myApp.restart();
-});
-
-//only for test
-gulp.task('test', function () {
-  // Restart main process
-  console.log('test');
-  console.log(argv.p);
-});
-
-gulp.task('reload:renderer', function () {
-  // Reload renderer process
-  myApp.reload();
+gulp.task('zip', () => {
+  var fileName = 'SealTalk-' + packageJSON.version + '-darwin-x64.zip';
+	return gulp.src('build/SealTalk-darwin-x64/SealTalk.app')
+		.pipe(zip(fileName))
+		.pipe(gulp.dest('dist/osx'));
 });
 
 gulp.task('default', ['serve']);
@@ -56,6 +37,7 @@ gulp.task('cleanup:build', function() {
   var arch = osInfo.arch;
   var platform = osInfo.platform;
   var src = './build/SealTalk-' + platform + '-' + arch;
+  src = './build';
   return gulp
     .src([src], {
       read: false
@@ -63,33 +45,19 @@ gulp.task('cleanup:build', function() {
     .pipe(clean());
 });
 
-gulp.task('env', function(cb) {
-  var envInfo = {
-    env: CURRENT_ENVIRONMENT
-  };
-  fs.writeFile('env.json', JSON.stringify(envInfo), cb);
-});
-
-gulp.task('production', function(callback) {
-  CURRENT_ENVIRONMENT = 'production';
-  sequence(
-    'cleanup:build',
-    // 'linter:src',
-    // 'less',
-    // 'html',
-    'env'
-    // 'webpack'
-  )(callback);
-});
-
 gulp.task('package', function(done) {
   var devDependencies = packageJSON.devDependencies;
   var devDependenciesKeys = Object.keys(devDependencies);
   var ignoreFiles = [
-    'build',
+    // 'build',
     'dist',
     'dist2',
-    'tests'
+    'codesign.bash',
+    'notice.txt',
+    'gulpfile.js',
+    'builder.json',
+    'gruntfile.js',
+    '.npminstall'
   ];
 
   devDependenciesKeys.forEach(function(key) {
@@ -106,6 +74,7 @@ gulp.task('package', function(done) {
   productName += '-' + platform + '-' + arch;
   if (platform === 'darwin') {
     iconPath = path.join(iconFolderPath, 'app.icns');
+    ignoreFiles.push('js/child.js');
   }
   else {
     iconPath = path.join(iconFolderPath, 'app.ico');
@@ -119,26 +88,23 @@ gulp.task('package', function(done) {
     'name': packageJSON.productName,
     'platform': platform,
     'asar': true,
-    // 'asar-unpack': './node_modules/node-notifier/vendor/**',
-    // 'asar-unpack-dir': 'node_modules/node-notifier/vendor/',
+    // 'asar-unpack': './node_modules/screenshot.framework/**',
+    'asar-unpack-dir': 'node_modules/screenshot.framework',
     'arch': arch,
-    'version': '0.36.9',
+    'version': packageJSON.package.runtimeVersion,
     'out': './build',
     'icon': iconPath,
-    'app-bundle-id': 'SealTalk',   // OS X only
+    'app-bundle-id': 'com.RCloud.SealTalk',   // OS X only
     'app-version': packageJSON.version,
     'build-version': packageJSON.version,
     'helper-bundle-id': 'SealTalk',// OS X only
     'ignore': ignoreRegexp,
     'overwrite': true,
-    // 'sign': '',// OS X only
-    // 'all': true,
+    'app-copyright': packageJSON.copyright,
     'version-string': {
-      'CompanyName': 'RongCloud',
-      'LegalCopyright': 'MIT',
+      'CompanyName': packageJSON.author,
       'FileDescription': packageJSON.description,
-      'FileVersion': packageJSON.version,
-      'ProductVersion': packageJSON.version,
+      'OriginalFilename': 'atom.exe',
       'ProductName': packageJSON.productName,
       'InternalName': packageJSON.productName
     }
@@ -183,16 +149,35 @@ gulp.task('post-package', function(done) {
   });
 });
 
-gulp.task('create-installer', function(done) {
-
-});
-
 gulp.task('build', function(callback) {
-  sequence(
-    'production',
+  var osInfo = getOSInfo();
+  var tasks = [
+    'cleanup:build',
     'package',
     'post-package'
+  ];
+
+  sequence(
+    tasks
   )(callback);
+});
+
+gulp.task('createWindowsInstaller', function(done) {
+  var osInfo = getOSInfo();
+  var appDirectory = './build/SealTalk-win32-' + osInfo.arch;
+  var outputDirectory = './dist/installer_' + osInfo.arch;
+  var resultPromise = electronInstaller.createWindowsInstaller({
+      appDirectory: appDirectory,
+      outputDirectory: outputDirectory,
+      authors: packageJSON.author,
+      exe: packageJSON.productName + '.exe',
+      setupIcon: './res/app.ico',
+      setupExe: ' SealTalk_by_RongCloud_' + packageJSON.version + '.exe',
+      noMsi: 'true',
+      iconUrl: 'http://7i7gc6.com1.z0.glb.clouddn.com/image/sealtalk.ico',
+      loadingGif: './res/loading.gif'
+  });
+  resultPromise.then(() => console.log("It worked!"), (e) => console.log(`No dice: ${e.message}`));
 });
 
 function getOSInfo(){

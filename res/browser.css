@@ -4,7 +4,7 @@ body{ overflow: hidden; background: url(../assets/img/webBg.png) 0 0/10px 10px !
 .LeftNav { padding-top: 14px !important; }
 
 /*聊天页面返回按钮与上边距*/
-.chatBox .chatBoxInner.client .clientHd{
+/*.chatBox .chatBoxInner.client .clientHd{
  display: block;
 }
 .chatBox .chatBoxInner.client .box_hd{
@@ -15,4 +15,4 @@ body{ overflow: hidden; background: url(../assets/img/webBg.png) 0 0/10px 10px !
 }
 #functionBox{
  top: 68px!important;
-}
+}*/
