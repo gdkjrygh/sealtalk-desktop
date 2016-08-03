@@ -20,6 +20,7 @@ Because we use npm to maintain our third party libraries, you have to make sure 
   npm start
 ```
 - 特别说明
+
   a. electron-prebuilt 1.0.0 以上的版本需要修改 electron-squirrel-startup 模块中 index.js 文件,需要将
 
   ```
