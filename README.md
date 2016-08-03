@@ -20,7 +20,7 @@ Because we use npm to maintain our third party libraries, you have to make sure 
   npm start
 ```
 - 特别说明
-  electron-prebuilt 1.0.0 以上的版本需要修改 electron-squirrel-startup 模块中 index.js 文件,需要将
+  a. electron-prebuilt 1.0.0 以上的版本需要修改 electron-squirrel-startup 模块中 index.js 文件,需要将
 
   ```
   var app = require('app');
@@ -30,6 +30,7 @@ Because we use npm to maintain our third party libraries, you have to make sure 
   ```
   var app = require('electron').app;
   ```
+  b. 运行前务必将 conf.js 中配置参数修改,REPORT_URL: crash report 地址, APP_ONLINE: 网站地址, API_URL_MAC:MAC 自动更新地址, API_URL_WIN: WIN 自动更新地址 后面两个需要结合 auto-updater.js 中修改地址一起用
 
 - 打包
 
