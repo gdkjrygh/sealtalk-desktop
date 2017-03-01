@@ -1,5 +1,9 @@
 # sealtalk-desktop
 
+## 资源使用说明
+
+本项目仅作技术交流使用，非融云公司正式对外提供的技术服务. 项目用 [Electron](https://electron.atom.io/) 开发,技术细节请参考 https://electron.atom.io/docs/, 问题咨询请移步 https://discuss.atom.io/c/electron, 欢迎大家互相交流.
+
 ## Download Links
 
 We do support Windows, Mac OS X,so please go check it :
