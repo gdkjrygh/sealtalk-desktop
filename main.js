@@ -61,18 +61,18 @@ electron.crashReporter.start({
   autoSubmit: true
 })
 // Only support Windows and OSX
-if ((platform.Windows || platform.OSX) && process.argv.indexOf('--disable-native') === -1) {
-    if (platform.OSX) {
-      myScreen = require('nodobjc')
-      var modulePath = app.getName() == 'Electron' ? './node_modules/screenshot.framework' : app.getAppPath() + '.unpacked/node_modules/screenshot.framework'
-      // modulePath = './node_modules/screenshot.framework'
-      myScreen.import(modulePath);
-    }
+// if ((platform.Windows || platform.OSX) && process.argv.indexOf('--disable-native') === -1) {
+//     if (platform.OSX) {
+//       myScreen = require('nodobjc')
+//       var modulePath = app.getName() == 'Electron' ? './node_modules/screenshot.framework' : app.getAppPath() + '.unpacked/node_modules/screenshot.framework'
+//       // modulePath = './node_modules/screenshot.framework'
+//       myScreen.import(modulePath);
+//     }
 
-    if (platform.Windows) {
-      myScreen = require('screenshot')
-    }
-}
+//     if (platform.Windows) {
+//       myScreen = require('screenshot')
+//     }
+// }
 
 if (platform.Windows) {
   app.setAppUserModelId('im.sealtalk.SealTalk.SealTalk')
@@ -139,9 +139,9 @@ app.on('ready', () => {
       if(blink){
          clearInterval(blink)
       }
-      if(platform.Windows && myScreen){
-        myScreen.exit_shot();
-      }
+      // if(platform.Windows && myScreen){
+      //   myScreen.exit_shot();
+      // }
     }
     // Save window bounds info when closing.
     saveWindowBounds()
@@ -498,92 +498,47 @@ process.on('uncaughtException', function (error) {
 })
 
 function takeScreenshot() {
-   if (!myScreen) return
-   try {
-  //    myScreen.screenShot(function(self,arg){
-  //      if(!arg) return
-  //      var str = arg.toString();
-  //      str = str.substr(1,str.length-2);
-  //      var reg = /\s/g;
-  //      str = str.replace(reg, "");
-  //      // console.log(str);
-  //      var buff = new Buffer(str, 'hex');
-   //
-  //      clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-  //      if (mainWindow) {
-  //        mainWindow.show()
-  //        mainWindow.webContents.send('screenshot')
-  //      }
-  //    });
+   // if (!myScreen) return
+   // try {
+   //    if(platform.OSX){
+   //        myScreen.screenshot('screenCapture',myScreen(function(self,arg){
+   //           if(!arg || arg.toString() == '<00>') return
+   //           var str = arg.toString();
+   //           str = str.substr(1,str.length-2);
+   //           var reg = /\s/g;
+   //           str = str.replace(reg, "");
+   //           var buff = new Buffer(str, 'hex');
+   //           // var buff = new Buffer(arg);
+   //           clipboard.clear();
+   //           clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+   //           // var image = nativeImage.createFromPath('/Users/zy/Desktop/cut.png');
+   //           if (mainWindow) {
+   //             mainWindow.show()
+   //             mainWindow.webContents.send('screenshot')
+   //           }
 
-      if(platform.OSX){
-          myScreen.screenshot('screenCapture',myScreen(function(self,arg){
-             if(!arg || arg.toString() == '<00>') return
-             var str = arg.toString();
-             str = str.substr(1,str.length-2);
-             var reg = /\s/g;
-             str = str.replace(reg, "");
-             var buff = new Buffer(str, 'hex');
-             // var buff = new Buffer(arg);
-             clipboard.clear();
-             clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-             // var image = nativeImage.createFromPath('/Users/zy/Desktop/cut.png');
-             if (mainWindow) {
-               mainWindow.show()
-               mainWindow.webContents.send('screenshot')
-             }
+   //        },['@',['@','@']]));
+   //    }
 
-          },['@',['@','@']]));
-      }
+   //    if(platform.Windows){
+   //      var cp = require('child_process')
+   //  		var n = cp.fork(path.join(__dirname, 'js', 'child.js'))
 
-      if(platform.Windows){
-        // myScreen.screencapture((data) => {
-        //    var buff = new Buffer(data);
-        //      clipboard.clear()
-        //      clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-        //      if (mainWindow) {
-        //        mainWindow.show()
-        //        mainWindow.webContents.send('screenshot')
-        //      }
-        //
-        // });
-        var cp = require('child_process')
-    		var n = cp.fork(path.join(__dirname, 'js', 'child.js'))
+   //  		n.on('message', function(data) {
+   //  			 var buff = new Buffer(data);
+   //               // clipboard.clear()
+   //               // clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
+   //               if (mainWindow) {
+   //                 mainWindow.show()
+   //                 mainWindow.webContents.send('screenshot')
+   //               }
+   //  		});
+   //  		n.send('takeScreenshot');
+   //    }
 
-    		n.on('message', function(data) {
-    			 var buff = new Buffer(data);
-                 // clipboard.clear()
-                 // clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-                 if (mainWindow) {
-                   mainWindow.show()
-                   mainWindow.webContents.send('screenshot')
-                 }
-    		});
-    		n.send('takeScreenshot');
-      }
-
-    // try {
-    //   myScreen(function (err, buff) {
-    //     if (err || !buff) return
-    //     clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-    //     if (mainWindow) {
-    //       mainWindow.show()
-    //       mainWindow.webContents.send('screenshot')
-    //     }
-    //   })
-    // } catch (error) {
-    //   Utils.handleError(error)
-    // }
-
-    //  screenshot(function (err, buff) {
-    //    if (err || !buff) return
-    //    clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-    //    mainWindow.show()
-    //    mainWindow.webContents.send('slave', 'screenshot')
-    //  })
-   } catch (error) {
-     Utils.handleError(error)
-   }
+   // } catch (error) {
+   //   Utils.handleError(error)
+   // }
  }
 
  function bindGlobalShortcuts(){

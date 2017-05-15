@@ -39,7 +39,6 @@
   "devDependencies": {
     "electron-builder": "^2.6.0",
     "electron-packager": "^7.0.2",
-    "electron-rebuild": "^1.1.5",
     "electron-winstaller": "^2.0.5",
     "fs-extra": "^0.26.5",
     "grunt": "^0.4.5",
