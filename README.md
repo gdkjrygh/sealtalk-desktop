@@ -23,6 +23,8 @@ nodejs使用5.3.0，Windows必须使用32位版本
 electron 必须用 1.4.3 版本； 
 electron-builder 必须用 2.11.0 以下版本 
 
+[详细配置说明参照](setup.md/) 
+
 ```
   npm install
   npm start
