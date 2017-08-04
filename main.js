@@ -60,19 +60,6 @@ electron.crashReporter.start({
   submitURL: `${Config.REPORT_URL}/post`,
   autoSubmit: true
 })
-// Only support Windows and OSX
-// if ((platform.Windows || platform.OSX) && process.argv.indexOf('--disable-native') === -1) {
-//     if (platform.OSX) {
-//       myScreen = require('nodobjc')
-//       var modulePath = app.getName() == 'Electron' ? './node_modules/screenshot.framework' : app.getAppPath() + '.unpacked/node_modules/screenshot.framework'
-//       // modulePath = './node_modules/screenshot.framework'
-//       myScreen.import(modulePath);
-//     }
-
-//     if (platform.Windows) {
-//       myScreen = require('screenshot')
-//     }
-// }
 
 if (platform.Windows) {
   app.setAppUserModelId('im.sealtalk.SealTalk.SealTalk')
@@ -498,48 +485,7 @@ process.on('uncaughtException', function (error) {
 })
 
 function takeScreenshot() {
-   // if (!myScreen) return
-   // try {
-   //    if(platform.OSX){
-   //        myScreen.screenshot('screenCapture',myScreen(function(self,arg){
-   //           if(!arg || arg.toString() == '<00>') return
-   //           var str = arg.toString();
-   //           str = str.substr(1,str.length-2);
-   //           var reg = /\s/g;
-   //           str = str.replace(reg, "");
-   //           var buff = new Buffer(str, 'hex');
-   //           // var buff = new Buffer(arg);
-   //           clipboard.clear();
-   //           clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-   //           // var image = nativeImage.createFromPath('/Users/zy/Desktop/cut.png');
-   //           if (mainWindow) {
-   //             mainWindow.show()
-   //             mainWindow.webContents.send('screenshot')
-   //           }
-
-   //        },['@',['@','@']]));
-   //    }
-
-   //    if(platform.Windows){
-   //      var cp = require('child_process')
-   //  		var n = cp.fork(path.join(__dirname, 'js', 'child.js'))
-
-   //  		n.on('message', function(data) {
-   //  			 var buff = new Buffer(data);
-   //               // clipboard.clear()
-   //               // clipboard.writeImage(nativeImage.createFromBuffer(buff), "image/png")
-   //               if (mainWindow) {
-   //                 mainWindow.show()
-   //                 mainWindow.webContents.send('screenshot')
-   //               }
-   //  		});
-   //  		n.send('takeScreenshot');
-   //    }
-
-   // } catch (error) {
-   //   Utils.handleError(error)
-   // }
- }
+}
 
  function bindGlobalShortcuts(){
    if (platform.OSX) {
